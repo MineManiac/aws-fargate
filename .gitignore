@@ -167,3 +167,5 @@ accessKeys.csv
 #TERRAFORM
 .terraform
 *.tfstate
+.terraform.lock.hcl
+terraform.tfstate.backup
