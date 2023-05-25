@@ -161,5 +161,9 @@ cython_debug/
 
 
 #AWS KEYS
-matheusrb_credentials.csv
-matheusrb_accessKeys.csv
+credentials.csv
+accessKeys.csv
+
+#TERRAFORM
+.terraform
+*.tfstate
