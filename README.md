@@ -369,7 +369,7 @@ In the end your files should look like this:
 
 If you want to see more outputs references you can check the following link: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
 
-## **Testing**
+## 6. **Testing**
 The first thing you should do is format all the files, you can do that by using the command:
 ```sh
 terraform fmt [FILENAME]
@@ -384,17 +384,26 @@ terraform plan
 terraform apply
 ```
 
-To check if everything was done correctly you need to open your amazon dashboard and check if the instance was created.
-If everything looks good destroy the instance so that we can proceed to the next steps.
-
+To check if everything was done correctly you need to open your amazon dashboard and check if everything looks alright.
+Afterwards you need to run:
 ```sh
 terraform destroy
 ```
+To clean up everything.
 
-my terminal looked like this when I did the **terraform apply** command, showing the outputs i stated in the output.tf file:
+### Your terminal should look like this when you run the **terraform apply** command, showing the outputs I stated in the output.tf file:
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/3bb42dea-d39a-446c-9dc4-51f91539a54b"  width="70%">
 
-![image](https://github.com/MineManiac/envAIronment-fargate/assets/15271557/d58b2df8-bc7d-4776-acc0-3f7c334b4fd8)
+### A couple of screenshots from my amazon dashboard:
 
+
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/7c922523-683e-425f-b77c-811682be7e66"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/6feed310-f3e9-4dba-ae25-2d161398cfd0"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/de2bc31d-75da-448a-8fa0-d82632abd4ef"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/3ac8b790-287d-4ca9-887d-8d2325b5c4c7"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/ed055fc9-8eeb-441c-9e14-4bf89548fded"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/419bdc76-1ce8-4280-a8a6-175ef3559ed8"  width="70%">
+<img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/32d8f9f9-bf19-4999-89d8-fb9e064d6487"  width="70%">
 
 
 ## **Documentações das ferramentas de desenvolvimento utilizadas:**
@@ -404,3 +413,18 @@ my terminal looked like this when I did the **terraform apply** command, showing
 * [VScode](https://code.visualstudio.com/docs)
 * [Tutorial Demay](https://github.com/TiagoDemay/tutorial-terraform/blob/main/tutorial/terraform.md)
 * [Tutorial Hashicorp](https://learn.hashicorp.com/tutorials/terraform/aws-build?in=terraform/aws-get-started)
+
+## **Quick References:**
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function
+
+https://spacelift.io/blog/terraform-docker
+
+https://dev.to/aws-builders/create-an-ecs-cluster-with-docker-image-using-terraform-8fc
+
+https://www.claranet.fr/blog/aws-fargate-terraform
+
+https://engineering.finleap.com/posts/2020-02-20-ecs-fargate-terraform/
+
+https://erik-ekberg.medium.com/terraform-ecs-fargate-example-1397d3ab7f02]
+
+https://www.architect.io/blog/2021-03-30/create-and-manage-an-aws-ecs-cluster-with-terraform/
