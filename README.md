@@ -1,129 +1,315 @@
 # **envAIronment-fargate**
 AWS project for my Cloud Computing class in college (INSPER), focusing on using FARGATE.
 
+## **About the project**
+Fargate is a AWS serverless service that allows us to run containers without having to manage servers or clusters. It is a very useful tool for developers that want to focus on the code and not on the infrastructure.
+
+Running ECS with fargate eliminates the need to manage servers or clusters of Amazon EC2 instances. With Fargate, you no longer have to provision, configure, and scale clusters of virtual machines to run containers. This removes the need to choose server types, decide when to scale your clusters, or optimize cluster packing. Fargate lets you focus on designing and building your applications instead of managing the infrastructure that runs them.
+
+The final goal of this project is to create a environment where we can run a container with a python script that will be triggered by a lambda function, and the container will run a script that will create a file in a S3 bucket.
+
+For the meantime we are going to use a simple hello-world.json in the place of the images.
+
 ## **What are we going to use??**
 For the following project we are going to use a couple tools to make the environment work
 
 * TERRAFORM 14.6
-  
-**AWS - Services:**
-* EC2
+    > Infrastructure as code tool
+* ECS with FARGATE 
+    > Elastic Container Service to run our serverless containers
+* VPC 
+    > Virtual private network to isolate our environment
 * LAMBDA
-* FARGATE
+    > To trigger the container and functions
+* S3 
+    > To store the images
+* IAM
+    > To manage the permissions
 
 # **Getting Started**
-Create or Use a AWS account
+Create or Use an existing AWS account
+
+In the amazon dashboard give the proper permissions to it, so that you can create the resources needed for the project.
 
 ## **Installations**
  You'll need to install the AWS CLI on your machine https://aws.amazon.com/cli/
 
  Afterwards Install Terraform, you can follow the instructions here: https://learn.hashicorp.com/tutorials/terraform/install-cli
 
- I am using WINDOWS and had a bit of a problem installing Terraform on my windows machine so if you want, you can see the following tutorial:
-https://www.youtube.com/watch?v=bSrV1Dr8py8&ab_channel=WillPereira
-
 
 ## **AWS access Key and Secret Key**
-You'll need to go to the directory of your Terraform folder and run
+To input your access key and secret key from AWS you'll need to run the following command on your terminal:
 
 ```sh
    aws configure
 ```
-
-Where you'll be asked to type your access key and secret key so that we can run terraform with the AWS provider
-
-### **HEADS-UP**
-Later on for each resource we'll need to choose a Amazon Machine Image (ami), the default image we're going to use is the ubuntu 22.04 jammy
-
-In each resource created you'll need to setup the following:
-``` sh
-    data "aws_ami" "ubuntu" {
-        most_recent = true
-
-        filter {
-            name= "name"
-            values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
-        }
-
-        owners = [ "099720109477" ]
-    }
-```
-We use this so that the image chosen is dynamic independently of the server used. The owner is Cannonical.
-
-And in case you need the origin:
-```sh
-amazon/ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20230516	
-```
+this is done so that we can use terraform to create the resources on AWS.
 
 # **Tutorial**
-I created a couple of files inside the Terraform folder so that I can manage and setup all of the resources used in AWS.
+First of all you'll need to create a folder to store all of the files, I named mine terraform, but you can name it whatever you want.
 
-We'll start deploying the EC2 resource, and later on lambda and Fargate.
+We'll start deploying the ECS Fargate resource, and later on lambda, S3 and IAM.
 
-# **1. Setting Up EC2**
+## 1. Setting Up ECS using Fargate
 
-## **Create backend.tf**
-Create a backend.tf file
-
-Here we are going to define the AWS provider setting up the version and the region
-
+### **Create main.tf**
+Here we are going to define the AWS provider setting up the region to **us-east-2**
+> main.tf
 ```sh
    # Configure the AWS Provider
     provider "aws" {
-        region  = var.region
+        region = "us-east-2"
+        alias  = "us-east-2"
     }
 ```
-
-## **Create variables.tf**
-We'll need to create a variables file to make it easier to change things, variables.tf
-
-At first lets setup the region and the instance type
+Create a resource called **aws_ecs_cluster** that will be our cluster, and we'll name it **"ecs-cluster"**
 ```sh
-    variable "region" {
-        description = "Define what region the AWS provider will use"
-        default = "us-east-2"
-    }
-
-    variable "instance_type" {
-        description = "Define what instance type the resource will use"
-        default = "t2.micro"
+    resource "aws_ecs_cluster" "ecs-cluster" {
+        name = "ecs-cluster"
     }
 ```
 
-## **Create ec2.tf**
-We create this file to manage the ec2 server resource
+Make a resource called **aws_ecs_task_definition** to define the task that will be run by the container, and name it **"ecs-task"**
+```sh
+    resource "aws_ecs_task_definition" "task_definition" {
+        family                   = "image-processor"
+        execution_role_arn       = aws_iam_role.esc_role.arn
+        task_role_arn            = aws_iam_role.task_role.arn
+        network_mode             = "awsvpc"
+        requires_compatibilities = ["FARGATE"]
+        memory =  512
+        cpu = 256
 
-Here we are going to code the deployment of the instance EC2 named "server". Where the image is the one previously stated, the type used is micro because I am using this to test the environment and don't want to waste a bunch of money.
+        container_definitions = data.local_file.containerdefinitions.content
+    }
+```
+The **aws_iam_role** resource will be made later on, now lets focus on the container_definitions file.
+
+It is necessary to create a json file with the container definitions, so that we can run the container with the proper configurations easily.
+
+In the same folder create a file called **containerdefinitions.json** and paste the following code, watch out for the indentation:
+>containerdefinitions.json
+```json
+[
+  {
+    "name": "image-processor",
+    "image": "ubuntu:latest",
+    
+    "portMappings": [
+      {
+        "containerPort": 80,
+        "protocol": "tcp"
+      }
+    ],
+    "environment": [
+      {
+        "name": "images-bucket",
+        "value": "${aws_s3_bucket.bucket_images.bucket}"
+      },
+      {
+        "name": "processing-image-function",
+        "value": "${aws_lambda_function.image_processing.function_name}"
+      }
+    ]
+  }
+]
+```
+The Bucket and Lambda Function will be created later on, so for now just copy the code and paste it in the json file.
+
+Back in the **main.tf** file we'll need to set our json file as a local_file resource, so that we can use it in the **aws_ecs_task_definition** resource.
+>main.tf
+```sh
+    data "local_file" "containerdefinitions" {
+        filename = "containerdefinitions.json"
+    }
+```
+
+Now we'll add the **aws_ecs_service** resource, that will manage the containers, and name it **image_processing_service"**
+```sh
+    resource "aws_ecs_service" "image_processing_service" {
+        name            = "image_processing_service"
+        cluster         = aws_ecs_cluster.ecs_cluster.id
+        task_definition = aws_ecs_task_definition.task_definition.arn
+        desired_count   = 1
+
+        network_configuration {
+            subnets = [aws_subnet.my_subnet.id]
+        }
+    }
+```
+For the network configuration we'll need to start our own **Virtual Private Cloud (VPC)** and Subnet, so that we can isolate our environment.
 
 ```sh
-    resource "aws_instance" "server" {
-        ami = "ami-053b0d53c279acc90"
-        instance_type = var.instance_type
+    resource "aws_vpc" "vpc" {
+        cidr_block = "10.0.0.0/16"
+    }
+
+    resource "aws_subnet" "subnet" {
+        vpc_id                  = aws_vpc.vpc.id
+        cidr_block              = "10.0.1.0/24"
+        availability_zone       = "us-east-2a"
+        map_public_ip_on_launch = true
+    }
+
+```
+
+## 2. Setting up S3
+### **Create s3.tf**
+We create this file and code the resource **aws_s3_bucket** to save the images that we'll be uploading to the container.
+> s3.tf
+```sh
+    resource "aws_s3_bucket" "bucket_images" {
+        bucket = "bucket-save-images"
     }
 ```
-The tags are used to categorize our resource, where we can name, state the type of environment we are going to use, in our case as a developer, the provisioner (Terraform), and the repository we are working on. It is totally up to you how to tag, and it is optional.
+
+## 3. Setting Lambda
+### **Create lambda.tf**
+This file is meant to code the lambda function that will process the images and save them in the bucket.
+
+However I did not make the image processing function, in place I used a simple **"Hello World"** function, so that we can test the lambda function and see if it is working properly.
 
 ```sh
-    tags = {
-        Name = "server-ec2"
-        Environment = "Dev"
-        Provisioner = "Terraform"
-        Repo = "https://github.com/MineManiac/envAIronment-fargate"
+    resource "aws_lambda_function" "image_processing" {
+        function_name    = "image-processing"
+        role             = aws_iam_role.lambda_role.arn
+        handler          = "hello-world.handler"
+        runtime          = "nodejs14.x"
+        filename         = "hello-world.zip"
+        source_code_hash = filebase64sha256("hello-world.zip")
+
+        environment {
+            variables = {
+            S3_BUCKET = aws_s3_bucket.bucket_images.bucket
+            }
+        }
     }
 ```
 
+For the Hello World function to work, create a file called **hello-world.js** and **zip**, saving it in the same directory. Paste the following code inside of it:
+> hello-world.js
+```js
+exports.handler = async (event) => {
+    console.log("Hello, World!");
+  
+    const response = {
+      statusCode: 200,
+      body: "Hello, World!",
+    };
+  
+    return response;
+  };
+```
+## 4. Setting up IAM
+### **Create the proper permission files**
+We'll have to use **IAM** to create the proper permissions for our resources to work, so we'll need to create 2 files, one for the **ecs_role.tf** and another one **lambda_role.tf**.
 
-## **Creating the Output.tf file**
-Here we are going to create the basic output file, where you can see all the outputs you set up. 
-
-
+### **Create ecs_role.tf**
+It is necessary so that our ECS service can access the S3 bucket and the Lambda function.
+> ecs_role.tf
 ```sh
-    output "public_ip" {
-        value = aws_instance.server.public_ip
+resource "aws_iam_role" "ecs_role" {
+  name = "ecs-role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
     }
+  ]
+}
+EOF
+}
 ```
 
-## **Final EC2 setup**
+### **Create lambda_role.tf**
+You'll also want to grant permissions for the **ecs_role** to access the **s3_bucket** and **lambda_function**.
+
+```sh	
+resource "aws_iam_role" "task_role" {
+  name = "task-role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+```
+
+Same thing for lambda role, we'll need to grant permissions for the **lambda_role** to access the **s3_bucket**.
+>lambda_role.tf
+```sh
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda-role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+```
+
+
+## 5.Setting up the output
+Here we are going to create the basic output file, where you can see all the outputs you set up.
+
+You can change the outputs according to your needs
+
+### **Create outputs.tf**
+```sh
+output "cluster_name" {
+  description = "value of the cluster name"
+  value = aws_ecs_cluster.ecs_cluster.name
+}
+
+output "task_definition_arn" {
+  description = "value of the task definition arn"
+  value = aws_ecs_task_definition.task_definition.arn
+}
+
+output "service_name" {
+  description = "value of the service name"
+  value = aws_ecs_service.image_processing_service.name
+}
+
+output "lambda_function_name" {
+  description = "value of the lambda function name"
+  value = aws_lambda_function.image_processing.function_name
+}
+
+output "s3_bucket_name" {
+  description = "value of the s3 bucket name"
+  value = aws_s3_bucket.bucket_images.bucket
+}
+```
+
+## **Final Step - Testing with Terraform**
 
 In the end your files should look like this:
 
@@ -205,14 +391,16 @@ If everything looks good destroy the instance so that we can proceed to the next
 terraform destroy
 ```
 
-# **2. Lambda & Fargate**
+my terminal looked like this when I did the **terraform apply** command, showing the outputs i stated in the output.tf file:
+
+![image](https://github.com/MineManiac/envAIronment-fargate/assets/15271557/d58b2df8-bc7d-4776-acc0-3f7c334b4fd8)
+
 
 
 ## **Documentações das ferramentas de desenvolvimento utilizadas:**
 
 * [Terraform](https://www.terraform.io/docs/index.html)
 * [AWS](https://docs.aws.amazon.com/index.html)
-* [Docker](https://docs.docker.com/)
 * [VScode](https://code.visualstudio.com/docs)
 * [Tutorial Demay](https://github.com/TiagoDemay/tutorial-terraform/blob/main/tutorial/terraform.md)
-
+* [Tutorial Hashicorp](https://learn.hashicorp.com/tutorials/terraform/aws-build?in=terraform/aws-get-started)
