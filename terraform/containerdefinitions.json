@@ -1,0 +1,23 @@
+[
+  {
+    "name": "image-processor",
+    "image": "ubuntu:latest",
+    
+    "portMappings": [
+      {
+        "containerPort": 80,
+        "protocol": "tcp"
+      }
+    ],
+    "environment": [
+      {
+        "name": "images-bucket",
+        "value": "${aws_s3_bucket.bucket_images.bucket}"
+      },
+      {
+        "name": "processing-image-function",
+        "value": "${aws_lambda_function.image_processing.function_name}"
+      }
+    ]
+  }
+]
