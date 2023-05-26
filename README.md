@@ -406,7 +406,7 @@ To clean up everything.
 <img src="https://github.com/MineManiac/envAIronment-fargate/assets/15271557/32d8f9f9-bf19-4999-89d8-fb9e064d6487"  width="70%">
 
 
-## **Documentações das ferramentas de desenvolvimento utilizadas:**
+## **Documentation for the tools used:**
 
 * [Terraform](https://www.terraform.io/docs/index.html)
 * [AWS](https://docs.aws.amazon.com/index.html)
