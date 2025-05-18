@@ -1,4 +1,4 @@
-# **envAIronment-fargate**
+# **AWS FARGATE**
 AWS project for my Cloud Computing class in college (INSPER), focusing on using FARGATE.
 
 ## **About the project**
